@@ -34,8 +34,10 @@ import os
 import ycm_core
 
 flags = [
+    '-Wall',
+    '-std=c++11',
     '-x',
-    'c',
+    'c++',
 ]
 
 
