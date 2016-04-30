@@ -1,3 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
 project (TankoRoboto)
 add_executable(TankoRoboto proto.c)
+target_link_libraries(TankoRoboto rt)
+target_link_libraries(TankoRoboto m)
