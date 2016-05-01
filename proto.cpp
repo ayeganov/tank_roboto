@@ -15,8 +15,10 @@
 
 #include "tick.h"
 #include "BrickPi.h"
- 
-#include <linux/i2c-dev.h>  
+
+#include "motor.h"
+
+#include <linux/i2c-dev.h>
 #include <fcntl.h>
 
 // Compile Using:
@@ -25,46 +27,43 @@
 // sudo ./program
 
 int result,v,f;
-#undef DEBUG
 
 
 int main() {
   ClearTick();
-  
+
   result = BrickPiSetup();
   printf("BrickPiSetup: %d\n", result);
   if(result)
     return 0;
 
-  BrickPi.Address[0] = 1;
-  BrickPi.Address[1] = 2;
+  BrickPiStruct& brick = get_brick();
+  brick.Address[0] = 1;
+  brick.Address[1] = 2;
+//  printf("BrickPi address %p\n", &brick);
 
-  BrickPi.MotorEnable[PORT_A] = 1;
-  BrickPi.MotorEnable[PORT_B] = 1;
+  robot::Motor motor{robot::MotorPort::PORT_A};
+  robot::Motor motorb{robot::MotorPort::PORT_B};
   result = BrickPiSetupSensors();
-  printf("BrickPiSetupSensors: %d\n", result); 
+  printf("BrickPiSetupSensors: %d\n", result);
   v=0;
   f=1;
   if(!result){
-    
     usleep(10000);
-    
     while(1){
       result = BrickPiUpdateValues();
       if(!result){
-		printf("%d\n",v);
-		if(f==1) {
-			if(++v > 300) f=0;
-			BrickPi.MotorSpeed[PORT_A]=200;
-			BrickPi.MotorSpeed[PORT_B]=200;
-			BrickPiUpdateValues();
-			}
-		else{
-			if(--v<0) f=1;
-			BrickPi.MotorSpeed[PORT_A]=-200;
-			BrickPi.MotorSpeed[PORT_B]=-200;
-			BrickPiUpdateValues();
-			}
+        printf("%d\n",v);
+        if(f==1) {
+            if(++v > 300) f=0;
+            motor.set_speed(200);
+            BrickPiUpdateValues();
+        }
+        else{
+            if(--v<0) f=1;
+            motor.set_speed(-200);
+            BrickPiUpdateValues();
+        }
        }
       usleep(10000);
     }
