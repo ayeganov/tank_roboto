@@ -40,7 +40,7 @@ int main() {
   BrickPiStruct& brick = get_brick();
   brick.Address[0] = 1;
   brick.Address[1] = 2;
-  printf("BrickPi address %p\n", &brick);
+//  printf("BrickPi address %p\n", &brick);
 
   robot::Motor motor{robot::MotorPort::PORT_A};
   robot::Motor motorb{robot::MotorPort::PORT_B};

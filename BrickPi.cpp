@@ -588,11 +588,11 @@ int BrickPiRx(unsigned char *InBytes, unsigned char *InArray, long timeout)
         printf("Error: %s\n", std::strerror(errno));
         print_tick += 1000000;
     }
-    usleep(10000);
+    usleep(100);
     if(timeout && ((CurrentTickUs() - OriginalTick) >= timeout)) return -2;  // Timeout
   }
   #ifdef DEBUG
-//    printf("Bytes read: %i\n", rx_length);
+  printf("Bytes read: %i\n", rx_length);
   #endif
 
   RxBytes = rx_length;
