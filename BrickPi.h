@@ -158,14 +158,6 @@ static const int LEGO_US_I2C_DATA_REG = 0x42;
 //US Fix ends
 
 
-static long gotten_bits = 0;
-//Setup USART Stream 0
-static int uart0_filestream = -1;
-static unsigned char Array[256];
-static unsigned char BytesReceived;
-static unsigned int Bit_Offset = 0;
-static unsigned char Retried = 0; // For re-trying a failed update.
-static int UART_file_descriptor = 0;
 
 
 extern unsigned long CurrentTickUs();
@@ -206,6 +198,7 @@ struct BrickPiStruct{
   unsigned char SensorI2CIn     [4][8][16]; // The I2C input buffers
 };
 static struct BrickPiStruct BrickPi;
+BrickPiStruct& get_brick();
 
 
 //Store the button's of the MINDSENSORS PSP Controller

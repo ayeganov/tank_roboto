@@ -37,10 +37,13 @@ int main() {
   if(result)
     return 0;
 
-  BrickPi.Address[0] = 1;
-  BrickPi.Address[1] = 2;
+  BrickPiStruct& brick = get_brick();
+  brick.Address[0] = 1;
+  brick.Address[1] = 2;
+  printf("BrickPi address %p\n", &brick);
 
   robot::Motor motor{robot::MotorPort::PORT_A};
+  robot::Motor motorb{robot::MotorPort::PORT_B};
   result = BrickPiSetupSensors();
   printf("BrickPiSetupSensors: %d\n", result);
   v=0;

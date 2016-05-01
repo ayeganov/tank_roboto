@@ -1,8 +1,17 @@
 #include <cstring>
 #include <cerrno>
+#include <iostream>
 #include "BrickPi.h"
 
+static long gotten_bits = 0;
+//Setup USART Stream 0
+static int uart0_filestream = -1;
+static unsigned char Array[256];
+static unsigned char BytesReceived;
+static unsigned int Bit_Offset = 0;
+static unsigned char Retried = 0; // For re-trying a failed update.
 
+BrickPiStruct& get_brick() { return BrickPi; }
 struct button init_psp (struct button b)
 {
     b.l1 = 0;
@@ -165,6 +174,7 @@ unsigned char BitsNeeded(unsigned long value)
 
 int BrickPiSetupSensors()
 {
+//    printf("Internal BrickPi: %p\n", &get_brick());
   unsigned char i = 0;
   while(i < 2){
     int ii = 0;
@@ -224,6 +234,7 @@ int BrickPiSetupSensors()
       ii++;
     }
     unsigned char UART_TX_BYTES = (((Bit_Offset + 7) / 8) + 3);
+//    std::cout << "From setup sensors\n";
     BrickPiTx(BrickPi.Address[i], UART_TX_BYTES, Array);
     // printf("Sent!");
     if(BrickPiRx(&BytesReceived, Array, 5000000))
@@ -384,10 +395,10 @@ __RETRY_COMMUNICATION__:
         case TYPE_SENSOR_COLOR_FULL:
           BrickPi.Sensor[port] = GetBits(1, 0, 3);
           BrickPi.SensorArray[port][INDEX_BLANK] = GetBits(1, 0, 10);
-          BrickPi.SensorArray[port][INDEX_RED  ] = GetBits(1, 0, 10);                
+          BrickPi.SensorArray[port][INDEX_RED  ] = GetBits(1, 0, 10);
           BrickPi.SensorArray[port][INDEX_GREEN] = GetBits(1, 0, 10);
           BrickPi.SensorArray[port][INDEX_BLUE ] = GetBits(1, 0, 10);
-        break;          
+        break;
         case TYPE_SENSOR_I2C:
         case TYPE_SENSOR_I2C_9V:
         //US Fix Starts
@@ -495,6 +506,7 @@ int BrickPiSetup()
     {
         //ERROR - CAN'T OPEN SERIAL PORT
         printf("Error - Unable to open UART.  Ensure it is not in use by another application\n");
+        return -1;
     }
 
     //CONFIGURE THE UART
@@ -513,6 +525,8 @@ int BrickPiSetup()
     options.c_iflag = IGNPAR;
     options.c_oflag = 0;
     options.c_lflag = 0;
+
+//    cfmakeraw(&options);
     tcflush(uart0_filestream, TCIFLUSH);
     tcsetattr(uart0_filestream, TCSANOW, &options);
 
@@ -532,21 +546,24 @@ void BrickPiTx(unsigned char dest, unsigned char ByteCount, unsigned char OutArr
   tx_buffer[2] = ByteCount;
   unsigned char i = 0;
 
-  while(i < ByteCount){
-    tx_buffer[1] += OutArray[i];
-    tx_buffer[i + 3] = OutArray[i];
-    i++;
+  while(i < ByteCount)
+  {
+      tx_buffer[1] += OutArray[i];
+      tx_buffer[i + 3] = OutArray[i];
+      i++;
   }
   #ifdef DEBUG
-    printf("Buffer: %s\n", tx_buffer);
-    printf("Buffer Size: %i\n", ByteCount);
+//  std::cout << "Buffer: " << tx_buffer << '\n';
+//  std::cout << "Buffer Size: " << ByteCount << '\n';
   #endif
   i = 0;
-  while(i < (ByteCount + 3)){
-    int n = write(uart0_filestream, &tx_buffer[i], 1);
-    if(n < 0) std::strerror(errno);
-    printf("Bytes written: %d\n", n);
-    i++;
+  while(i < (ByteCount + 3))
+  {
+      int n = write(uart0_filestream, &tx_buffer[i], 1);
+//      printf("Tx buffer %u: %u\n", i, tx_buffer[i]);
+      if(n < 0) std::strerror(errno);
+//      printf("Bytes written: %d\n", n);
+      i++;
   }
 }
 
@@ -575,7 +592,7 @@ int BrickPiRx(unsigned char *InBytes, unsigned char *InArray, long timeout)
     if(timeout && ((CurrentTickUs() - OriginalTick) >= timeout)) return -2;  // Timeout
   }
   #ifdef DEBUG
-    printf("Bytes read: %i\n", rx_length);
+//    printf("Bytes read: %i\n", rx_length);
   #endif
 
   RxBytes = rx_length;
