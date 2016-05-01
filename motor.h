@@ -1,3 +1,5 @@
+#include "BrickPi.h"
+
 namespace robot
 {
     enum class MotorPort

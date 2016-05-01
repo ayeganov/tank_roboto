@@ -13,10 +13,9 @@
 #include <math.h>
 #include <time.h>
 
-extern "C" {
 #include "tick.h"
 #include "BrickPi.h"
-}
+
 #include "motor.h"
 
 #include <linux/i2c-dev.h>
@@ -28,7 +27,6 @@ extern "C" {
 // sudo ./program
 
 int result,v,f;
-#undef DEBUG
 
 
 int main() {
@@ -42,7 +40,7 @@ int main() {
   BrickPi.Address[0] = 1;
   BrickPi.Address[1] = 2;
 
-  robot::Motor motor(robot::MotorPort::PORT_A);
+  robot::Motor motor{robot::MotorPort::PORT_A};
   result = BrickPiSetupSensors();
   printf("BrickPiSetupSensors: %d\n", result);
   v=0;

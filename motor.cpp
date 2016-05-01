@@ -1,8 +1,6 @@
 #include <cassert>
 
-extern "C"{
 #include "BrickPi.h"
-}
 #include "motor.h"
 
 namespace robot
@@ -14,7 +12,6 @@ namespace robot
     {
         enable();
     }
-
 
     void Motor::enable()
     {
