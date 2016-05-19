@@ -38,6 +38,8 @@ flags = [
     '-std=c++11',
     '-x',
     'c++',
+
+    '-I./boost/include'
 ]
 
 

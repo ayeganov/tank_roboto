@@ -4,8 +4,6 @@
 #include "BrickPi.h"
 
 static long gotten_bits = 0;
-//Setup USART Stream 0
-static int uart0_filestream = -1;
 static unsigned char Array[256];
 static unsigned char BytesReceived;
 static unsigned int Bit_Offset = 0;
@@ -334,17 +332,17 @@ __RETRY_COMMUNICATION__:
       }
       ii++;
     }
-    
+
     unsigned char UART_TX_BYTES = (((Bit_Offset + 7) / 8) + 1);
     BrickPiTx(BrickPi.Address[i], UART_TX_BYTES, Array);
-    
+
     int result = BrickPiRx(&BytesReceived, Array, 7500);
-    
-    if(result != -2){                            // -2 is the only error that indicates that the BrickPi uC did not properly receive the message
+
+    if(result != -2){ // -2 is the only error that indicates that the BrickPi uC did not properly receive the message
       BrickPi.EncoderOffset[((i * 2) + PORT_A)] = 0;
       BrickPi.EncoderOffset[((i * 2) + PORT_B)] = 0;
     }
-    
+
     if(result || (Array[BYTE_MSG_TYPE] != MSG_TYPE_VALUES)){
 #ifdef DEBUG
       printf("BrickPiRx error: %d\n", result);
@@ -360,14 +358,14 @@ __RETRY_COMMUNICATION__:
         return -1;
       }      
     }
-    
+
     Bit_Offset = 0;
-    
+
     unsigned char Temp_BitsUsed[2] = {0, 0};         // Used for encoder values
     Temp_BitsUsed[0] = GetBits(1, 0, 5);
     Temp_BitsUsed[1] = GetBits(1, 0, 5);
     unsigned long Temp_EncoderVal;
-    
+
     ii = 0;
     while(ii < 2){
       Temp_EncoderVal = GetBits(1, 0, Temp_BitsUsed[ii]);
@@ -375,7 +373,8 @@ __RETRY_COMMUNICATION__:
         Temp_EncoderVal /= 2;
         BrickPi.Encoder[ii + (i * 2)] = Temp_EncoderVal * (-1);}
       else{
-        BrickPi.Encoder[ii + (i * 2)] = (Temp_EncoderVal / 2);}      
+        BrickPi.Encoder[ii + (i * 2)] = (Temp_EncoderVal / 2);
+      }
       ii++;
     }
 
