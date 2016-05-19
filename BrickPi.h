@@ -157,6 +157,8 @@ static const int LEGO_US_I2C_ADDR = 0x02;
 static const int LEGO_US_I2C_DATA_REG = 0x42;
 //US Fix ends
 
+//Setup USART Stream 0
+static int uart0_filestream = -1;
 
 
 
