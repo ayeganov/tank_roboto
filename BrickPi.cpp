@@ -1,6 +1,5 @@
 #include <cstring>
 #include <cerrno>
-#include <iostream>
 #include "BrickPi.h"
 
 static long gotten_bits = 0;
@@ -232,9 +231,7 @@ int BrickPiSetupSensors()
       ii++;
     }
     unsigned char UART_TX_BYTES = (((Bit_Offset + 7) / 8) + 3);
-//    std::cout << "From setup sensors\n";
     BrickPiTx(BrickPi.Address[i], UART_TX_BYTES, Array);
-    // printf("Sent!");
     if(BrickPiRx(&BytesReceived, Array, 5000000))
       return -1;
     if(!(BytesReceived == 1 && Array[BYTE_MSG_TYPE] == MSG_TYPE_SENSOR_TYPE))

@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 2.8)
 project (TankoRoboto CXX)
 
-set(Boost_INCLUDE_DIR boost/include)
-set(Boost_LIBRARY_DIR boost/lib)
+set(Boost_INCLUDE_DIR /raspb/boost/include)
+set(Boost_LIBRARY_DIR /raspb/boost/lib)
 find_package(Boost COMPONENTS system filesystem REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 

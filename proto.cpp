@@ -29,8 +29,6 @@
 // Run the compiled program using:
 // sudo ./program
 
-namespace basio = boost::asio;
-
 int result,v,f;
 
 
@@ -46,16 +44,17 @@ int main() {
     BrickPiStruct& brick = get_brick();
     brick.Address[0] = 1;
     brick.Address[1] = 2;
-  //  printf("BrickPi address %p\n", &brick);
 
-    basio::io_service loop;
-    robot::PeriodicCallback pc(posix_time::seconds(5), loop);
+    asio::io_service loop;
+    robot::PeriodicCallback pc(posix_time::seconds(1), loop);
+    robot::PeriodicCallback update_values(posix_time::milliseconds(10), loop);
 
     robot::Motor motor{PORT_A};
 
     result = BrickPiSetupSensors();
     motor.set_speed(200);
 
+    update_values.start(BrickPiUpdateValues);
     pc.start(
         [&motor]()
         {
@@ -67,36 +66,5 @@ int main() {
 
     loop.run();
 
-//    printf("BrickPiSetupSensors: %d\n", result);
-//    v=0;
-//    f=1;
-//    if(!result){
-//      usleep(10000);
-//      while(1){
-////        result = BrickPiUpdateValues();
-//        if(!result){
-//          printf("%d\n",v);
-//          if(f==1) {
-//              if(++v > 300) f=0;
-//              if(motor.get_speed() != 200)
-//              {
-//                  std::cout << "Changing to 200\n";
-//                  motor.set_speed(200);
-////              BrickPiUpdateValues();
-//              }
-//          }
-//          else{
-//              if(--v<0) f=1;
-//              if(motor.get_speed() != -200)
-//              {
-//                  std::cout << "Changing to -200\n";
-//                  motor.set_speed(-200);
-////              BrickPiUpdateValues();
-//              }
-//          }
-//         }
-//        usleep(10000);
-//      }
-//    }
     return 0;
 }
