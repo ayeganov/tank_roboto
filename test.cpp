@@ -1,29 +1,96 @@
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/posix/stream_descriptor.hpp>
-#include <boost/asio/read.hpp>
-#include <boost/asio/streambuf.hpp>
-#include <boost/system/error_code.hpp>
 #include <iostream>
-#include <unistd.h>
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/enable_shared_from_this.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
-using namespace boost::asio;
+
+class Input : public boost::enable_shared_from_this<Input>
+{
+public:
+    typedef boost::shared_ptr<Input> Ptr;
+
+public:
+    static void create(
+            boost::asio::io_service& io_service
+            )
+    {
+        Ptr input(
+                new Input( io_service )
+                );
+        input->read();
+    }
+
+private:
+    explicit Input(
+            boost::asio::io_service& io_service
+         ) :
+        _input( io_service )
+    {
+        _input.assign( STDIN_FILENO );
+    }
+
+    void read()
+    {
+
+      boost::asio::async_read_until(_input,
+        boost::asio::buffer(&_command, sizeof(_command)),
+        '\n',
+        boost::bind(
+            &Input::read_handler,
+            shared_from_this(),
+            boost::asio::placeholders::error,
+            boost::asio::placeholders::bytes_transferred
+        )
+    );
+
+//        boost::asio::async_read(
+//                _input,
+//                boost::asio::buffer( &_command, sizeof(_command) ),
+//                boost::bind(
+//                    &Input::read_handler,
+//                    shared_from_this(),
+//                    boost::asio::placeholders::error,
+//                    boost::asio::placeholders::bytes_transferred
+//                    )
+//                );
+    }
+
+    void read_handler(
+            const boost::system::error_code& error,
+            const size_t bytes_transferred
+            )
+    {
+        if ( error ) {
+            std::cerr << "read error: " << boost::system::system_error(error).what() << std::endl;
+            return;
+        }
+
+        if ( _command != '\n' ) {
+            std::cout << "command: " << _command << std::endl;
+        }
+
+        this->read();
+    }
+
+private:
+    boost::asio::posix::stream_descriptor _input;
+//    boost::asio::streambuf _input_buf;
+    char _command;
+};
 
 
 int main()
 {
-  io_service ioservice;
+  boost::asio::io_service io;
 
-  posix::stream_descriptor stream{ioservice, STDOUT_FILENO};
-  streambuf buf;
-  auto handler = [&](const boost::system::error_code&, std::size_t) {
-      std::istream is(&buf);
-      std::string out;
-      is >> out;
-    std::cout << "Got string: " << out << std::endl;
-  };
+  int count = 0;
 
+  Input::create( io);
 
-  async_read(stream, buf, handler);
+  io.run();
 
-  ioservice.run();
+  std::cout << "Final count is " << count << "\n";
+
+  return 0;
 }

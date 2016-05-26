@@ -17,6 +17,7 @@
 
 #include "tick.h"
 #include "BrickPi.h"
+#include "controller.hpp"
 
 #include "motor.h"
 #include "periodic_callback.hpp"

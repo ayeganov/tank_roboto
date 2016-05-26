@@ -19,12 +19,15 @@ set (TankoRoboto 0)
 set (TankoRoboto 1)
 
 add_executable(TankoRoboto motor.cpp BrickPi.cpp proto.cpp)
-#add_executable(TankoRoboto test.cpp)
 target_link_libraries(TankoRoboto rt)
 target_link_libraries(TankoRoboto m)
 target_link_libraries(TankoRoboto pthread)
 target_link_libraries(TankoRoboto ${Boost_LIBRARIES})
 target_link_libraries(TankoRoboto ${ZMQ_LIB})
+
+#add_executable(InputTest test.cpp)
+#target_link_libraries(InputTest ${Boost_LIBRARIES})
+#target_link_libraries(InputTest pthread)
 
 add_definitions(-std=c++0x)
 #set(CMAKE_CXX_FLAGS_DEBUG, "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")

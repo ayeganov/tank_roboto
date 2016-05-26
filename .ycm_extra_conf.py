@@ -39,7 +39,8 @@ flags = [
     '-x',
     'c++',
 
-    '-I/raspb/lib/boost/include'
+    '-I/raspb/lib/boost/include',
+    '-I/raspb/lib/'
 ]
 
 
