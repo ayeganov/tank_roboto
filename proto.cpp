@@ -25,6 +25,8 @@
 #include <linux/i2c-dev.h>
 #include <fcntl.h>
 
+#include "controller.hpp"
+
 // Compile Using:
 // sudo gcc -o program "LEGO - Motor Test.c" -lrt -lm
 // Run the compiled program using:
@@ -64,6 +66,8 @@ int main() {
             motor.set_speed(-motor.get_speed());
         }
     );
+
+    ZmqController zc{loop, "inproc://test"};
 
     loop.run();
 

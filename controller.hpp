@@ -1,4 +1,8 @@
+#ifndef _COMM_CONTROLLERS_
+#define _COMM_CONTROLLERS_
+
 #include <boost/asio.hpp>
+#include <boost/asio/buffer.hpp>
 #include <boost/bind.hpp>
 #include <azmq/socket.hpp>
 #include <string>
@@ -8,6 +12,7 @@
 #include "periodic_callback.hpp"
 
 namespace pt = boost::posix_time;
+
 class ITank
 {
 public:
@@ -31,22 +36,22 @@ class ZmqController : public IController
           m_pc(pt::seconds(2), loop)
         {
             m_stream_sock.connect(s);
-            m_stream_sock.async_receive(boost::asio::buffer(m_receive_buffer), boost::bind(&ZmqController::handle_receive, this, asio::placeholders::error));
-
+            m_stream_sock.async_receive(asio::buffer(m_receive_buffer), [this](boost::system::error_code const& ec, size_t bytes_transferred) {
+                    if(ec)
+                    {
+                        return;
+                    }
+                    std::cout << "Got some data: " << m_receive_buffer.data() << '\n';
+                });
         }
 
-        void handle_receive(boost::system::error_code ec, size_t bytes_transferred)
+        void process_cmd()
         {
-            if(ec)
-            {
-                return;
-            }
-            std::cout << "Got message: " << m_receive_buffer.data() << '\n';
         }
 
     private:
         azmq::pair_socket m_stream_sock;
-        std::array<256, char> m_receive_buffer;
+        std::array<char, 256> m_receive_buffer;
         robot::PeriodicCallback m_pc;
 };
 
@@ -70,3 +75,4 @@ class Tank : public ITank
         int m_left_track_motor;
         int m_right_track_motor;
 };
+#endif

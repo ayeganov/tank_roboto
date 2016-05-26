@@ -1,3 +1,6 @@
+#ifndef _PERIODIC_CALLBACK_
+#define _PERIODIC_CALLBACK_
+
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/bind.hpp>
@@ -60,3 +63,4 @@ private:
     std::function<void()> m_callback;
 };
 };
+#endif
