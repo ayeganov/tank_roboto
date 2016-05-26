@@ -9,7 +9,7 @@ set(zmq_INCLUDE_DIR /raspb/lib/zmq/include)
 
 find_library(ZMQ_LIB zmq PATHS ${zmq_LIBRARY_DIR})
 
-find_package(Boost COMPONENTS system filesystem regex REQUIRED)
+find_package(Boost COMPONENTS system filesystem regex program_options REQUIRED)
 include_directories(${Boost_INCLUDE_DIR})
 include_directories(${azmq_LIBRARY_DIR})
 include_directories(${zmq_INCLUDE_DIR})
@@ -18,18 +18,13 @@ include_directories(${zmq_INCLUDE_DIR})
 set (TankoRoboto 0)
 set (TankoRoboto 1)
 
-add_executable(TankoRoboto motor.cpp BrickPi.cpp proto.cpp)
+add_executable(TankoRoboto motor.cpp BrickPi.cpp tank_main.cpp)
 target_link_libraries(TankoRoboto rt)
 target_link_libraries(TankoRoboto m)
 target_link_libraries(TankoRoboto pthread)
 target_link_libraries(TankoRoboto ${Boost_LIBRARIES})
 target_link_libraries(TankoRoboto ${ZMQ_LIB})
 
-#add_executable(InputTest test.cpp)
-#target_link_libraries(InputTest ${Boost_LIBRARIES})
-#target_link_libraries(InputTest pthread)
-
 add_definitions(-std=c++0x)
-#set(CMAKE_CXX_FLAGS_DEBUG, "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 
 install(TARGETS TankoRoboto DESTINATION bin)

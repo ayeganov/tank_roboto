@@ -1,5 +1,8 @@
 #include "BrickPi.h"
 
+#ifndef __MOTOR__H__
+#define __MOTOR__H__
+
 namespace robot
 {
     class Motor
@@ -17,3 +20,4 @@ namespace robot
         bool m_enabled;
     };
 };
+#endif
