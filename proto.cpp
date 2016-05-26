@@ -47,7 +47,7 @@ int main() {
     brick.Address[1] = 2;
 
     asio::io_service loop;
-    robot::PeriodicCallback pc(posix_time::seconds(1), loop);
+    robot::PeriodicCallback pc(posix_time::seconds(2), loop);
     robot::PeriodicCallback update_values(posix_time::milliseconds(10), loop);
 
     robot::Motor motor{PORT_A};

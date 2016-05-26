@@ -1,8 +1,13 @@
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
 #include <azmq/socket.hpp>
 #include <string>
+#include <array>
+#include <iostream>
 
+#include "periodic_callback.hpp"
 
+namespace pt = boost::posix_time;
 class ITank
 {
 public:
@@ -22,13 +27,27 @@ class ZmqController : public IController
 {
     public:
         ZmqController(boost::asio::io_service& loop, std::string s)
-        : m_stream_sock(loop)
+        : m_stream_sock(loop),
+          m_pc(pt::seconds(2), loop)
         {
             m_stream_sock.connect(s);
+            m_stream_sock.async_receive(boost::asio::buffer(m_receive_buffer), boost::bind(&ZmqController::handle_receive, this, asio::placeholders::error));
+
+        }
+
+        void handle_receive(boost::system::error_code ec, size_t bytes_transferred)
+        {
+            if(ec)
+            {
+                return;
+            }
+            std::cout << "Got message: " << m_receive_buffer.data() << '\n';
         }
 
     private:
-        azmq::stream_socket m_stream_sock;
+        azmq::pair_socket m_stream_sock;
+        std::array<256, char> m_receive_buffer;
+        robot::PeriodicCallback m_pc;
 };
 
 
