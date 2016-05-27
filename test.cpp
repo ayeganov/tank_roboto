@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <iostream>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -32,28 +33,16 @@ private:
 
     void read()
     {
-
-      boost::asio::async_read_until(_input,
-        boost::asio::buffer(&_command, sizeof(_command)),
-        '\n',
-        boost::bind(
-            &Input::read_handler,
-            shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred
-        )
-    );
-
-//        boost::asio::async_read(
-//                _input,
-//                boost::asio::buffer( &_command, sizeof(_command) ),
-//                boost::bind(
-//                    &Input::read_handler,
-//                    shared_from_this(),
-//                    boost::asio::placeholders::error,
-//                    boost::asio::placeholders::bytes_transferred
-//                    )
-//                );
+        boost::asio::async_read(
+                _input,
+                boost::asio::buffer( &_command, sizeof(_command) ),
+                boost::bind(
+                    &Input::read_handler,
+                    shared_from_this(),
+                    boost::asio::placeholders::error,
+                    boost::asio::placeholders::bytes_transferred
+                    )
+                );
     }
 
     void read_handler(
@@ -75,7 +64,6 @@ private:
 
 private:
     boost::asio::posix::stream_descriptor _input;
-//    boost::asio::streambuf _input_buf;
     char _command;
 };
 
@@ -86,6 +74,7 @@ int main()
 
   int count = 0;
 
+  std::setbuf(stdin, nullptr);
   Input::create( io);
 
   io.run();

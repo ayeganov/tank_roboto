@@ -37,6 +37,7 @@ class ZmqController : public IController
         {
             m_stream_sock.connect(s);
             m_stream_sock.async_receive(asio::buffer(m_receive_buffer), [this](boost::system::error_code const& ec, size_t bytes_transferred) {
+                    std::cout << "callback called." << std::endl;
                     if(ec)
                     {
                         return;

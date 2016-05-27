@@ -26,6 +26,7 @@
 #include <fcntl.h>
 
 #include "controller.hpp"
+#include <azmq/socket.hpp>
 
 // Compile Using:
 // sudo gcc -o program "LEGO - Motor Test.c" -lrt -lm
@@ -66,6 +67,16 @@ int main() {
             motor.set_speed(-motor.get_speed());
         }
     );
+
+
+    azmq::pair_socket pub_sock{loop};
+    pub_sock.bind("inproc://test");
+
+    robot::PeriodicCallback publisher{boost::posix_time::seconds(2), loop};
+    publisher.start([&]() {
+        std::cout << "Sending some stuff..." << std::endl;
+        pub_sock.send(asio::buffer("Test... 1... 2... 3..."));
+    });
 
     ZmqController zc{loop, "inproc://test"};
 
