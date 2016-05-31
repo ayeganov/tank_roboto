@@ -20,7 +20,7 @@
 #include "controller.hpp"
 
 #include "motor.h"
-#include "periodic_callback.hpp"
+#include "robo_utils.hpp"
 
 #include <linux/i2c-dev.h>
 #include <fcntl.h>
@@ -50,8 +50,8 @@ int main() {
     brick.Address[1] = 2;
 
     asio::io_service loop;
-    robot::PeriodicCallback pc(posix_time::seconds(2), loop);
-    robot::PeriodicCallback update_values(posix_time::milliseconds(10), loop);
+    roboutils::PeriodicCallback pc(posix_time::seconds(2), loop);
+    roboutils::PeriodicCallback update_values(posix_time::milliseconds(10), loop);
 
     robot::Motor motor{PORT_A};
 
@@ -72,10 +72,19 @@ int main() {
     azmq::pair_socket pub_sock{loop};
     pub_sock.bind("inproc://test");
 
-    robot::PeriodicCallback publisher{boost::posix_time::seconds(2), loop};
+    roboutils::PeriodicCallback publisher{boost::posix_time::seconds(2), loop};
+    std::string send_data{"Test"};
     publisher.start([&]() {
         std::cout << "Sending some stuff..." << std::endl;
-        pub_sock.send(asio::buffer("Test... 1... 2... 3..."));
+        pub_sock.send(asio::buffer(send_data));
+        if(send_data == "Test")
+        {
+            send_data = "s";
+        }
+        else
+        {
+            send_data += send_data;
+        }
     });
 
     ZmqController zc{loop, "inproc://test"};

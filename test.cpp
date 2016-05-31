@@ -5,6 +5,9 @@
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#include <termios.h>
+#include <unistd.h>
+
 
 class Input : public boost::enable_shared_from_this<Input>
 {
@@ -74,7 +77,22 @@ int main()
 
   int count = 0;
 
-  std::setbuf(stdin, nullptr);
+  struct termios term;
+  if(tcgetattr(STDIN_FILENO, &term))
+  {
+      std::cerr << "tcgetttr failed\n";
+      exit(-1);
+  }
+  term.c_lflag &= ~ICANON;
+  term.c_lflag &= ~ECHO;
+  term.c_cc[VMIN] = 1;
+
+  if(tcsetattr(STDIN_FILENO, TCSANOW, &term))
+  {
+      std::cerr << "tcsetattr failed\n";
+      exit(-1);
+  }
+
   Input::create( io);
 
   io.run();

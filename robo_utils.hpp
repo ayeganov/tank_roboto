@@ -4,13 +4,15 @@
 #include <boost/asio.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/bind.hpp>
+#include <iostream>
+#include <array>
 #include <functional>
 #include <future>
 
 
 using namespace boost;
 
-namespace robot
+namespace roboutils
 {
 
 /**
@@ -62,5 +64,56 @@ private:
     posix_time::time_duration m_duration;
     std::function<void()> m_callback;
 };
+
+
+template <typename SockType, size_t buf_size>
+class AzmqSock
+{
+    public:
+        AzmqSock(asio::io_service& loop)
+        : m_socket(loop),
+          m_buffer()
+        {
+        }
+
+        void bind(std::string address)
+        {
+            m_socket.bind(address);
+        }
+
+        void connect(std::string address)
+        {
+            m_socket.connect(address);
+        }
+
+        void handle_receive(system::error_code ec, size_t bytes_transferred)
+        {
+            if(ec)
+            {
+                std::cerr << ec.message() << std::endl;
+                return;
+            }
+            std::string tmp{m_buffer.data(), bytes_transferred};
+            m_callback(std::move(tmp));
+            m_socket.async_receive(asio::buffer(m_buffer), [this](system::error_code ec, size_t bt) {
+                handle_receive(ec, bt);
+            });
+        }
+
+        template<class F>
+        void on_recv(F&& f)
+        {
+            m_callback = std::move(f);
+            m_socket.async_receive(asio::buffer(m_buffer), [this](system::error_code ec, size_t bt) {
+                handle_receive(ec, bt);
+            });
+        }
+
+    private:
+        SockType m_socket;
+        std::array<char, buf_size> m_buffer;
+        std::function<void(std::string)> m_callback;
+};
+
 };
 #endif
