@@ -65,6 +65,8 @@ int main(int argc, char* argv[])
         brick.Address[1] = 2;
 
         asio::io_service loop;
+        asio::signal_set signals(loop, SIGINT, SIGTERM);
+        signals.async_wait(boost::bind(&boost::asio::io_service::stop, &loop));
 
         error = BrickPiSetupSensors();
         if(error)
