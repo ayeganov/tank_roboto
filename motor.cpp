@@ -1,4 +1,4 @@
-#include <cassert>
+#include <algorithm>
 
 #include "BrickPi.h"
 #include "motor.h"
@@ -27,7 +27,7 @@ namespace robot
 
     void Motor::set_speed(int speed)
     {
-        assert(speed <= 255 && speed >= -255);
+        speed = std::min(255, std::max(speed, -255));
         get_brick().MotorSpeed[m_port] = speed;
         m_speed = speed;
     }
