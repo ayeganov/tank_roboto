@@ -17,7 +17,7 @@
 
 namespace pt = boost::posix_time;
 
-const int TANK_SPEED = 200;
+const int TANK_SPEED = 255;
 
 class ITank
 {
