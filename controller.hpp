@@ -32,21 +32,24 @@ class IController
 {
     public:
         virtual void process_cmd(std::string cmd) = 0;
-        virtual pt::ptime get_last_cmd_time() const = 0;
 };
 
 
 class ZmqController : public IController
 {
+    static const pt::millisec STOP_TANK_THRESHOLD;
+
     public:
         ZmqController(boost::asio::io_service& loop, std::string address, ITank* tank)
         : m_socket(loop),
           m_tank(tank),
-          m_last_cmd_time(pt::microsec_clock::local_time())
+          m_last_cmd_time(pt::microsec_clock::local_time()),
+          m_stop_tank_cb(pt::milliseconds(50), loop)
         {
             m_socket.connect(address);
             m_socket.get_socket().set_option(azmq::socket::subscribe());
             m_socket.on_recv(std::bind(&ZmqController::process_cmd, this, std::placeholders::_1));
+            m_stop_tank_cb.start([this](){ stop_tank_check(); } );
         }
 
         void process_cmd(std::string cmd)
@@ -78,16 +81,23 @@ class ZmqController : public IController
             m_last_cmd_time = pt::microsec_clock::local_time();
         }
 
-        pt::ptime get_last_cmd_time() const
-        {
-            return m_last_cmd_time;
-        }
-
     private:
         roboutils::AzmqSock<azmq::sub_socket, 256> m_socket;
         ITank* m_tank;
         pt::ptime m_last_cmd_time;
+        roboutils::PeriodicCallback m_stop_tank_cb;
+
+        void stop_tank_check()
+        {
+            pt::ptime current_time = pt::microsec_clock::local_time();
+            pt::time_duration td = current_time - m_last_cmd_time;
+            if(m_tank && ZmqController::STOP_TANK_THRESHOLD <= td)
+            {
+                m_tank->stop();
+            }
+        }
 };
+const pt::millisec ZmqController::STOP_TANK_THRESHOLD = pt::millisec(100);
 
 
 class Tank : public ITank

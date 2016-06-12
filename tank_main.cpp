@@ -20,7 +20,6 @@
 namespace po = boost::program_options;
 namespace pt = boost::posix_time;
 
-const pt::millisec STOP_TANK_THRESHOLD = pt::millisec(500);
 
 po::variables_map process_command_args(int argc, char* argv[])
 {
@@ -63,6 +62,7 @@ int main(int argc, char* argv[])
         BrickPiStruct& brick = get_brick();
         brick.Address[0] = 1;
         brick.Address[1] = 2;
+        brick.SensorType[PORT_2] = TYPE_SENSOR_ULTRASONIC_CONT;
 
         asio::io_service loop;
         asio::signal_set signals(loop, SIGINT, SIGTERM);
@@ -80,19 +80,13 @@ int main(int argc, char* argv[])
         std::cout << "Connecting to '" << control_address << "' to receive commands.\n";
         ZmqController zc{loop, control_address, &tank};
 
-        roboutils::PeriodicCallback update_values(posix_time::milliseconds(10), loop);
-        update_values.start([&]() {
-                pt::ptime current_time = pt::microsec_clock::local_time();
-                pt::ptime last_time = zc.get_last_cmd_time();
-                pt::time_duration td = current_time - last_time;
-                if(STOP_TANK_THRESHOLD <= td)
-                {
-                    tank.stop();
-                }
+        roboutils::PeriodicCallback update_values(pt::milliseconds(10), loop);
+        update_values.start(BrickPiUpdateValues);
 
-                BrickPiUpdateValues();
-            }
-        );
+        roboutils::PeriodicCallback print_sensor(pt::milliseconds(200), loop);
+        print_sensor.start([&]() {
+            std::cout << "Current US value: " << brick.Sensor[PORT_2] << std::endl;
+        });
 
         loop.run();
     }
