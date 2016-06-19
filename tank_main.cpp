@@ -8,6 +8,7 @@
 
 #include "tick.h"
 #include "BrickPi.h"
+#include "brick_state.hpp"
 #include "controller.hpp"
 
 #include "motor.h"
@@ -49,6 +50,8 @@ int main(int argc, char* argv[])
     try
     {
         po::variables_map args = process_command_args(argc, argv);
+        std::string control_address = args["address"].as<std::string>();
+        std::cout << "Connecting to '" << control_address << "' to receive commands.\n";
 
         int error;
         error = BrickPiSetup();
@@ -76,17 +79,12 @@ int main(int argc, char* argv[])
         }
 
         Tank tank{PORT_D, PORT_A};
-        std::string control_address = args["address"].as<std::string>();
-        std::cout << "Connecting to '" << control_address << "' to receive commands.\n";
-        ZmqController zc{loop, control_address, &tank};
 
-        roboutils::PeriodicCallback update_values(pt::milliseconds(10), loop);
-        update_values.start(BrickPiUpdateValues);
+        roboutils::BrickState state{pt::millisec(10), loop};
+        roboutils::UltraSonicSensor uss{PORT_2};
 
-        roboutils::PeriodicCallback print_sensor(pt::milliseconds(200), loop);
-        print_sensor.start([&]() {
-            std::cout << "Current US value: " << brick.Sensor[PORT_2] << std::endl;
-        });
+        ZmqController zc{loop, control_address, tank};
+        SensorController sc{uss, tank, state};
 
         loop.run();
     }

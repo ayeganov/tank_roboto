@@ -12,10 +12,11 @@
 
 #include "robo_utils.hpp"
 #include "motor.h"
-#include "BrickPi.h"
+#include "brick_state.hpp"
 
 
-namespace pt = boost::posix_time;
+using namespace boost;
+
 
 const int TANK_SPEED = 255;
 
@@ -37,14 +38,14 @@ class IController
 
 class ZmqController : public IController
 {
-    static const pt::millisec STOP_TANK_THRESHOLD;
+    static const posix_time::millisec STOP_TANK_THRESHOLD;
 
     public:
-        ZmqController(boost::asio::io_service& loop, std::string address, ITank* tank)
+        ZmqController(boost::asio::io_service& loop, std::string address, ITank& tank)
         : m_socket(loop),
           m_tank(tank),
-          m_last_cmd_time(pt::microsec_clock::local_time()),
-          m_stop_tank_cb(pt::milliseconds(50), loop)
+          m_last_cmd_time(posix_time::microsec_clock::local_time()),
+          m_stop_tank_cb(posix_time::milliseconds(50), loop)
         {
             m_socket.connect(address);
             m_socket.get_socket().set_option(azmq::socket::subscribe());
@@ -52,52 +53,89 @@ class ZmqController : public IController
             m_stop_tank_cb.start([this](){ stop_tank_check(); } );
         }
 
-        void process_cmd(std::string cmd)
+        void process_cmd(std::string cmd) override
         {
             if(cmd.find('w') != std::string::npos)
             {
-                m_tank->set_left_track_speed(TANK_SPEED);
-                m_tank->set_right_track_speed(TANK_SPEED);
+                m_tank.set_left_track_speed(TANK_SPEED);
+                m_tank.set_right_track_speed(TANK_SPEED);
             }
             else if(cmd.find('a') != std::string::npos)
             {
-                m_tank->set_left_track_speed(-TANK_SPEED);
-                m_tank->set_right_track_speed(TANK_SPEED);
+                m_tank.set_left_track_speed(-TANK_SPEED);
+                m_tank.set_right_track_speed(TANK_SPEED);
             }
             else if(cmd.find('d') != std::string::npos)
             {
-                m_tank->set_left_track_speed(TANK_SPEED);
-                m_tank->set_right_track_speed(-TANK_SPEED);
+                m_tank.set_left_track_speed(TANK_SPEED);
+                m_tank.set_right_track_speed(-TANK_SPEED);
             }
             else if(cmd.find('s') != std::string::npos)
             {
-                m_tank->set_left_track_speed(-TANK_SPEED);
-                m_tank->set_right_track_speed(-TANK_SPEED);
+                m_tank.set_left_track_speed(-TANK_SPEED);
+                m_tank.set_right_track_speed(-TANK_SPEED);
             }
             else
             {
                 std::cerr << "Unknown command: " << cmd << std::endl;
             }
-            m_last_cmd_time = pt::microsec_clock::local_time();
+            m_last_cmd_time = posix_time::microsec_clock::local_time();
         }
 
     private:
         roboutils::AzmqSock<azmq::sub_socket, 256> m_socket;
-        ITank* m_tank;
-        pt::ptime m_last_cmd_time;
+        ITank& m_tank;
+        posix_time::ptime m_last_cmd_time;
         roboutils::PeriodicCallback m_stop_tank_cb;
 
         void stop_tank_check()
         {
-            pt::ptime current_time = pt::microsec_clock::local_time();
-            pt::time_duration td = current_time - m_last_cmd_time;
-            if(m_tank && ZmqController::STOP_TANK_THRESHOLD <= td)
+            posix_time::ptime current_time = posix_time::microsec_clock::local_time();
+            posix_time::time_duration td = current_time - m_last_cmd_time;
+            if(ZmqController::STOP_TANK_THRESHOLD <= td)
             {
-                m_tank->stop();
+                m_tank.stop();
             }
         }
 };
-const pt::millisec ZmqController::STOP_TANK_THRESHOLD = pt::millisec(100);
+const posix_time::millisec ZmqController::STOP_TANK_THRESHOLD = posix_time::millisec(100);
+
+
+class SensorController : public IController
+{
+    public:
+        SensorController(roboutils::UltraSonicSensor& sensor, ITank& tank, roboutils::BrickState& brick_state)
+        : m_sensor(sensor),
+          m_tank(tank)
+        {
+            brick_state.on_state_update(roboutils::NotifyType::CONTINUOUS,
+                                        &SensorController::control_robot,
+                                        this);
+        }
+
+    private:
+        void control_robot()
+        {
+            m_sensor.update_reading();
+            process_cmd("");
+            if(m_display_count >= 100)
+            {
+                std::cout << "Immediate value: " << m_sensor.get_immediate_value() << '\n'
+                          << "Average value: " << m_sensor.get_average_value() << '\n';
+                m_display_count = 0;
+            }
+            ++m_display_count;
+        }
+
+        void process_cmd(std::string cmd)
+        {
+
+        }
+
+        roboutils::UltraSonicSensor& m_sensor;
+        ITank& m_tank;
+        int m_display_count = 0;
+};
 
 
 class Tank : public ITank
@@ -108,17 +146,17 @@ class Tank : public ITank
            m_right_motor(right_track_motor)
         {}
 
-        void set_left_track_speed(int speed)
+        void set_left_track_speed(int speed) override
         {
             m_left_motor.set_speed(speed);
         }
 
-        void set_right_track_speed(int speed)
+        void set_right_track_speed(int speed) override
         {
             m_right_motor.set_speed(speed);
         }
 
-        void stop()
+        void stop() override
         {
             m_right_motor.set_speed(0);
             m_left_motor.set_speed(0);
