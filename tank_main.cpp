@@ -8,6 +8,7 @@
 
 #include "tick.h"
 #include "BrickPi.h"
+#include "brick_state.hpp"
 #include "controller.hpp"
 
 #include "motor.h"
@@ -20,7 +21,6 @@
 namespace po = boost::program_options;
 namespace pt = boost::posix_time;
 
-const pt::millisec STOP_TANK_THRESHOLD = pt::millisec(500);
 
 po::variables_map process_command_args(int argc, char* argv[])
 {
@@ -50,6 +50,8 @@ int main(int argc, char* argv[])
     try
     {
         po::variables_map args = process_command_args(argc, argv);
+        std::string control_address = args["address"].as<std::string>();
+        std::cout << "Connecting to '" << control_address << "' to receive commands.\n";
 
         int error;
         error = BrickPiSetup();
@@ -63,6 +65,7 @@ int main(int argc, char* argv[])
         BrickPiStruct& brick = get_brick();
         brick.Address[0] = 1;
         brick.Address[1] = 2;
+        brick.SensorType[PORT_2] = TYPE_SENSOR_ULTRASONIC_CONT;
 
         asio::io_service loop;
         asio::signal_set signals(loop, SIGINT, SIGTERM);
@@ -76,23 +79,12 @@ int main(int argc, char* argv[])
         }
 
         Tank tank{PORT_D, PORT_A};
-        std::string control_address = args["address"].as<std::string>();
-        std::cout << "Connecting to '" << control_address << "' to receive commands.\n";
-        ZmqController zc{loop, control_address, &tank};
 
-        roboutils::PeriodicCallback update_values(posix_time::milliseconds(10), loop);
-        update_values.start([&]() {
-                pt::ptime current_time = pt::microsec_clock::local_time();
-                pt::ptime last_time = zc.get_last_cmd_time();
-                pt::time_duration td = current_time - last_time;
-                if(STOP_TANK_THRESHOLD <= td)
-                {
-                    tank.stop();
-                }
+        roboutils::BrickState state{pt::millisec(10), loop};
+        roboutils::UltraSonicSensor uss{PORT_2, 0.2};
 
-                BrickPiUpdateValues();
-            }
-        );
+        ZmqController zc{loop, control_address, tank};
+        SensorController sc{uss, tank, state};
 
         loop.run();
     }

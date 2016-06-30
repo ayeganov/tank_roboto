@@ -28,3 +28,6 @@
 *.app
 *.py[cod]
 *.swp
+
+#Directories
+build/
