@@ -21,13 +21,17 @@
 namespace po = boost::program_options;
 namespace pt = boost::posix_time;
 
+const std::string SENSOR = "sensor";
+const std::string REMOTE = "remote";
+
 
 po::variables_map process_command_args(int argc, char* argv[])
 {
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help,h", "This program controls the tanko roboto over the given network interface.")
-        ("address,a", po::value<std::string>()->required(), "Address of the remote controller")
+        ("address,a", po::value<std::string>(), "Address of the remote controller")
+        ("controller,c", po::value<std::string>()->required(), "Type of controller to use: sensor, remote")
     ;
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -50,8 +54,6 @@ int main(int argc, char* argv[])
     try
     {
         po::variables_map args = process_command_args(argc, argv);
-        std::string control_address = args["address"].as<std::string>();
-        std::cout << "Connecting to '" << control_address << "' to receive commands.\n";
 
         int error;
         error = BrickPiSetup();
@@ -79,12 +81,32 @@ int main(int argc, char* argv[])
         }
 
         Tank tank{PORT_D, PORT_A};
-
         roboutils::BrickState state{pt::millisec(10), loop};
-        roboutils::UltraSonicSensor uss{PORT_2, 0.2};
 
-        ZmqController zc{loop, control_address, tank};
-        SensorController sc{uss, tank, state};
+        std::shared_ptr<IController> controller;
+        std::shared_ptr<roboutils::UltraSonicSensor> uss;
+        std::string control_type = args["controller"].as<std::string>();
+        if(control_type == REMOTE)
+        {
+            auto entry = args.find("address");
+            if(entry == args.end())
+            {
+                throw std::invalid_argument("You must specify address when using remote controller.");
+            }
+            std::string control_address = args["address"].as<std::string>();
+            std::cout << "Connecting to '" << control_address << "' to receive commands.\n";
+            controller = std::make_shared<ZmqController>(loop, control_address, tank);
+        }
+        else if(control_type == SENSOR)
+        {
+            uss = std::make_shared<roboutils::UltraSonicSensor>(PORT_2, 0.2);
+            controller = std::make_shared<SensorController>(*uss, tank, state);
+        }
+        else
+        {
+            std::string errmsg = "Unknown controller type " + control_type;
+            throw std::invalid_argument(errmsg);
+        }
 
         loop.run();
     }
