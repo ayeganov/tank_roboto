@@ -81,7 +81,7 @@ int main(int argc, char* argv[])
         Tank tank{PORT_D, PORT_A};
 
         roboutils::BrickState state{pt::millisec(10), loop};
-        roboutils::UltraSonicSensor uss{PORT_2};
+        roboutils::UltraSonicSensor uss{PORT_2, 0.2};
 
         ZmqController zc{loop, control_address, tank};
         SensorController sc{uss, tank, state};
