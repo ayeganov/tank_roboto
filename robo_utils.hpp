@@ -120,5 +120,95 @@ class AzmqSock
         std::function<void(std::string)> m_callback;
 };
 
+
+class SerialClass
+{
+public:
+    //Class constructor
+    SerialClass(boost::asio::io_service& loop): m_loop(loop),
+                                                m_port(m_loop),
+                                                m_quit_flag(false),
+                                                m_delimeter("\n")
+    {};
+
+    //Class destructor
+    ~SerialClass()
+    {
+        //Stop the I/O services
+        m_loop.stop();
+    }
+
+    bool connect(const std::string& port_name, int baud=9600, std::string delimiter="\n")
+    {
+        using namespace boost::asio;
+        m_delimeter = delimiter;
+
+        m_port.open(port_name);
+        //Setup port
+        m_port.set_option(serial_port::baud_rate(baud));
+        m_port.set_option(serial_port::flow_control(
+        serial_port::flow_control::none));
+
+        if (m_port.is_open())
+        {
+            //Start io-service in a background thread.
+            startReceive();
+        }
+
+        return m_port.is_open();
+    }
+
+    void startReceive()
+    {
+        using namespace boost::asio;
+        //Issue a async receive and give it a callback
+        //onData that should be called when m_delimiter
+        //is matched.
+        async_read_until(m_port,
+                         m_buffer,
+                         m_delimeter,
+                         boost::bind(&SerialClass::onData, this, _1, _2));
+    }
+
+    void send(const std::string& text)
+    {
+        boost::asio::write(m_port, boost::asio::buffer(text));
+    }
+
+
+    bool quit()
+    {
+        return m_quit_flag;
+    }
+
+private:
+    boost::asio::io_service& m_loop;
+    boost::asio::serial_port m_port;
+
+    boost::asio::streambuf m_buffer;
+
+    bool m_quit_flag;
+    std::string m_delimeter;
+
+    void onData(const boost::system::error_code& e,
+            std::size_t size)
+    {
+        if (!e)
+        {
+            std::istream is(&m_buffer);
+            std::string data(size, '\0');
+            is.read(&data[0], size);
+
+            std::cout<<"Received data:" << data;
+
+            //If we receive quit()\r\n indicate
+            //end of operations
+            m_quit_flag = (data.compare("quit()\r\n") == 0);
+        };
+
+        startReceive();
+    };
+};
+
 };
 #endif
