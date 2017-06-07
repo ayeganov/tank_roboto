@@ -120,5 +120,96 @@ class AzmqSock
         std::function<void(std::string)> m_callback;
 };
 
+
+class SerialPort
+{
+public:
+    //Class constructor
+    SerialPort(boost::asio::io_service& loop): m_loop(loop),
+                                                m_port(m_loop),
+                                                m_delimeter("\n")
+    {};
+
+    //Class destructor
+    ~SerialPort()
+    {
+        //Stop the I/O services
+        m_port.close();
+    }
+
+    bool connect(const std::string& port_name, int baud=9600, std::string delimiter="\n")
+    {
+        using namespace boost::asio;
+        m_delimeter = delimiter;
+
+        m_port.open(port_name);
+        //Setup port
+        m_port.set_option(serial_port::baud_rate(baud));
+        m_port.set_option(serial_port::flow_control(
+        serial_port::flow_control::none));
+
+        if (m_port.is_open())
+        {
+            //Start io-service in a background thread.
+            start_receive();
+        }
+
+        return m_port.is_open();
+    }
+
+    void start_receive()
+    {
+        using namespace boost::asio;
+        //Issue a async receive and give it a callback
+        //on_data that should be called when m_delimiter
+        //is matched.
+        async_read_until(m_port,
+                         m_buffer,
+                         m_delimeter,
+                         boost::bind(&SerialPort::on_data, this, _1, _2));
+    }
+
+    void send(const std::string& text)
+    {
+        boost::asio::write(m_port, boost::asio::buffer(text));
+    }
+
+    bool is_open() const
+    {
+        return m_port.is_open();
+    }
+
+    template<class F>
+    void on_recv(F&& f)
+    {
+        m_callback = std::move(f);
+    }
+
+private:
+    boost::asio::io_service& m_loop;
+    boost::asio::serial_port m_port;
+
+    boost::asio::streambuf m_buffer;
+
+    std::string m_delimeter;
+
+    std::function<void(std::string)> m_callback;
+
+    void on_data(const boost::system::error_code& e,
+            std::size_t size)
+    {
+        if (!e)
+        {
+            std::istream is(&m_buffer);
+            std::string data(size, '\0');
+            is.read(&data[0], size);
+
+            m_callback(std::move(data));
+        };
+
+        start_receive();
+    };
+};
+
 };
 #endif
