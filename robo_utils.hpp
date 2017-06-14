@@ -204,7 +204,10 @@ private:
             std::string data(size, '\0');
             is.read(&data[0], size);
 
-            m_callback(std::move(data));
+            if(m_callback)
+            {
+                m_callback(std::move(data));
+            }
         };
 
         start_receive();

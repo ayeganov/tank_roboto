@@ -13,6 +13,7 @@
 
 #include "motor.h"
 #include "robo_utils.hpp"
+#include "sensor.hpp"
 
 #include <linux/i2c-dev.h>
 #include <fcntl.h>
@@ -31,6 +32,7 @@ po::variables_map process_command_args(int argc, char* argv[])
     desc.add_options()
         ("help,h", "This program controls the tanko roboto over the given network interface.")
         ("address,a", po::value<std::string>(), "Address of the remote controller")
+        ("network,n", po::value<std::string>(), "Neural network file to use for controlling the bot")
         ("controller,c", po::value<std::string>()->required(), "Type of controller to use: sensor, remote")
     ;
     po::variables_map vm;
@@ -44,6 +46,12 @@ po::variables_map process_command_args(int argc, char* argv[])
     }
 
     return vm;
+}
+
+
+void handle_serial(std::string data)
+{
+    std::cout << data << '\n';
 }
 
 
@@ -99,8 +107,13 @@ int main(int argc, char* argv[])
         }
         else if(control_type == SENSOR)
         {
-            uss = std::make_shared<roboutils::UltraSonicSensor>(PORT_2, 0.2);
-            controller = std::make_shared<SensorController>(*uss, tank, state);
+            auto entry = args.find("network");
+            if(entry == args.end())
+            {
+                throw std::invalid_argument("You must specify network when using sensor controller.");
+            }
+            std::string net_path = args["network"].as<std::string>();
+            controller = std::make_shared<NeuralController>(net_path, tank, loop, state);
         }
         else
         {

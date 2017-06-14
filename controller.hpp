@@ -1,18 +1,24 @@
 #ifndef _COMM_CONTROLLERS_
 #define _COMM_CONTROLLERS_
 
+#include <algorithm>
+#include <array>
+#include <iostream>
+#include <string>
+#include <vector>
+
 #include <boost/asio.hpp>
 #include <boost/asio/buffer.hpp>
 #include <boost/bind.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <azmq/socket.hpp>
-#include <string>
-#include <array>
-#include <iostream>
+#include <neatnet/genalg.h>
+#include <neatnet/phenotype.h>
 
-#include "robo_utils.hpp"
-#include "motor.h"
 #include "brick_state.hpp"
+#include "motor.h"
+#include "robo_utils.hpp"
+#include "sensor.hpp"
 
 
 using namespace boost;
@@ -23,6 +29,8 @@ static const std::string FORWARD = "w";
 static const std::string BACKWARD = "s";
 static const std::string LEFT = "a";
 static const std::string RIGHT = "d";
+const std::string PORT_NAME = "/dev/ttyACM0";
+const int BAUD_RATE = 115200;
 
 
 class ITank
@@ -39,7 +47,8 @@ public:
 class IController
 {
     public:
-        virtual void process_cmd(std::string cmd) = 0;
+        template <typename INPUT>
+        void process_cmd(INPUT cmd);
 };
 
 
@@ -60,7 +69,7 @@ class ZmqController : public IController
             m_stop_tank_cb.start([this](){ stop_tank_check(); } );
         }
 
-        void process_cmd(std::string cmd) override
+        void process_cmd(std::string cmd)
         {
             if(cmd.find('w') != std::string::npos)
             {
@@ -168,6 +177,88 @@ class SensorController : public IController
         roboutils::UltraSonicSensor& m_sensor;
         ITank& m_tank;
         std::string m_prev_cmd;
+};
+
+
+class NeuralController : public IController
+{
+    public:
+        NeuralController(const std::string& net_path, ITank& tank, boost::asio::io_service& loop,
+                         roboutils::BrickState& brick_state)
+        : m_serial_ultra_sensor(loop),
+          m_tank(tank)
+        {
+            m_neural_net = std::make_shared<neat::NeuralNet>(net_path);
+            brick_state.on_state_update(roboutils::NotifyType::CONTINUOUS,
+                                        &NeuralController::control_robot,
+                                        this);
+            m_serial_ultra_sensor.connect();
+        }
+
+        void control_robot()
+        {
+            std::vector<double> readings;
+            for(int sensor_id = 0; sensor_id < 5; ++sensor_id)
+            {
+                readings.push_back(m_serial_ultra_sensor.sensor_reading(sensor_id));
+            }
+            // simulation model numbering is in revers to hardware
+            std::reverse(readings.begin(), readings.end());
+            process_cmd(readings);
+        }
+
+        void process_cmd(std::vector<double> cmd)
+        {
+            auto input = convert_to_net_input(cmd);
+            auto output = m_neural_net->Update(input);
+            std::cout << "Left: " << output[0] << ", Right: " << output[1] << std::endl;
+            m_tank.set_left_track_speed(output[0]);
+            m_tank.set_right_track_speed(output[1]);
+        }
+
+    private:
+        sensor::SerialUltrasonicSensor<5> m_serial_ultra_sensor;
+        ITank& m_tank;
+        neat::SNeuralNetPtr m_neural_net;
+
+        ///=========== methods ============
+        std::vector<double> convert_to_net_input(std::vector<double>readings)
+        {
+            double collision_start = 25;
+            double collision_end = 10;
+            double range = collision_start - collision_end;
+            double collided = 0;
+            std::vector<double> net_input;
+
+            for(double r : readings)
+            {
+                if(r <= collision_end)
+                {
+                    collided = 1;
+                    net_input.push_back(1);
+                }
+                else if(r <= collision_start)
+                {
+                    auto depth = (r - collision_end) / range;
+                    net_input.push_back(depth);
+                }
+                else
+                {
+                    net_input.push_back(-1);
+                }
+                // no need to add -1 for feelers
+//                net_input.push_back(-1);
+            }
+            net_input.push_back(collided);
+            net_input.push_back(0);
+            std::cout << "input: ";
+            for(auto v : net_input)
+            {
+                std::cout << v << " ";
+            }
+            std::cout << std::endl;
+            return net_input;
+        }
 };
 
 
