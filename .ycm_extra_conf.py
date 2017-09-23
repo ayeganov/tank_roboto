@@ -33,13 +33,17 @@
 import os
 import ycm_core
 
+rasp_tools = "/home/aleks/space/raspberrypi_toolchain/raspb"
 flags = [
     '-Wall',
-    '-std=c++11',
+    '-std=c++14',
     '-x',
     'c++',
 
-    '-I/raspb/lib/boost/include',
+    '-I/%s/lib/boost/include' % rasp_tools,
+    '-I/%s/lib/azmq' % rasp_tools,
+    '-I/%s/lib/neatnet/include/neatnet' % rasp_tools,
+    '-I/%s/lib/zmq/include' % rasp_tools,
     '-I/raspb/lib/'
 ]
 
