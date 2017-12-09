@@ -15,6 +15,8 @@
 #include <neatnet/genalg.h>
 #include <neatnet/phenotype.h>
 
+#include "json.hpp"
+
 #include "brick_state.hpp"
 #include "motor.h"
 #include "robo_utils.hpp"
@@ -261,6 +263,48 @@ class NeuralController : public IController
         }
 };
 
+
+class SensorPublisher
+{
+    public:
+        SensorPublisher(const std::string& address, boost::asio::io_service& loop,
+                         roboutils::BrickState& brick_state)
+        : m_pub_sock{loop},
+          m_serial_ultra_sensor{loop}
+        {
+            m_pub_sock.bind(address);
+            brick_state.on_state_update(roboutils::NotifyType::CONTINUOUS,
+                                        &SensorPublisher::publish_readings,
+                                        this);
+            m_serial_ultra_sensor.connect();
+        }
+
+        void publish_readings()
+        {
+            std::vector<double> readings;
+            nlohmann::json msg;
+            nlohmann::json ultra_sonic;
+            nlohmann::json odometry;
+
+            for(int sensor_id = NUM_SENSORS - 1; sensor_id >= 0; --sensor_id)
+            {
+                ultra_sonic[sensor_id] = m_serial_ultra_sensor.sensor_reading(sensor_id);
+            }
+
+            odometry["left"] = get_brick().Encoder[PORT_D];
+            odometry["right"] = get_brick().Encoder[PORT_A];
+
+            msg["ultrasonic"] = ultra_sonic;
+            msg["odometry"] = odometry;
+
+            m_pub_sock.get_socket().send(boost::asio::buffer(msg.dump()));
+        }
+
+    private:
+        const static int NUM_SENSORS = 5;
+        roboutils::AzmqSock<azmq::pub_socket, 256> m_pub_sock;
+        sensor::SerialUltrasonicSensor<NUM_SENSORS> m_serial_ultra_sensor;
+};
 
 template<typename T>
 T max(T l, T r)

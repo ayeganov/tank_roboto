@@ -49,12 +49,6 @@ po::variables_map process_command_args(int argc, char* argv[])
 }
 
 
-void handle_serial(std::string data)
-{
-    std::cout << data << '\n';
-}
-
-
 int main(int argc, char* argv[])
 {
     ClearTick();
@@ -121,6 +115,8 @@ int main(int argc, char* argv[])
             throw std::invalid_argument(errmsg);
         }
 
+        std::string publish_address = "tcp://*:7654";
+        SensorPublisher sensor_publisher{publish_address, loop, state};
         loop.run();
     }
     catch(std::exception& e)

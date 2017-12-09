@@ -160,7 +160,7 @@ static const int LEGO_US_I2C_DATA_REG = 0x42;
 //Setup USART Stream 0
 static int uart0_filestream = -1;
 
-
+const int ENCODER_TICK_PER_REV = 720;
 
 extern unsigned long CurrentTickUs();
 

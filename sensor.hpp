@@ -106,14 +106,12 @@ private:
                     return;
                 }
                 m_sensors[idx] = (value * m_alpha) + (1.0 - m_alpha) * m_sensors[idx];
-                std::cout << idx << ": " << m_sensors[idx] << " ";
             }
             catch(...)
             {
                 std::cerr << "Unable to parse data: " << reading << std::endl;
             }
         }
-        std::cout << std::endl;
     }
 };
 
