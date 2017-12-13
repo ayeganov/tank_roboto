@@ -34,6 +34,19 @@ static const std::string RIGHT = "d";
 const std::string PORT_NAME = "/dev/ttyACM0";
 const int BAUD_RATE = 115200;
 
+const int USONIC_MAX = 4;
+const int HEADING = 5;
+const int RATE_GYR_X = 6;
+const int RATE_GYR_Y = 7;
+const int RATE_GYR_Z = 8;
+const int GYRO_ANGLE_X = 9;
+const int GYRO_ANGLE_Y = 10;
+const int GYRO_ANGLE_Z = 11;
+const int ACC_ANGLE_X = 12;
+const int ACC_ANGLE_Y = 13;
+const int CF_ANGLE_X = 14;
+const int CF_ANGLE_Y = 15;
+
 
 class ITank
 {
@@ -267,12 +280,20 @@ class NeuralController : public IController
 class SensorPublisher
 {
     public:
-        SensorPublisher(const std::string& address, boost::asio::io_service& loop,
-                         roboutils::BrickState& brick_state)
-        : m_pub_sock{loop},
+        SensorPublisher(const std::string& odom_address,
+                        const std::string& imu_address,
+                        boost::asio::io_service& loop,
+                        roboutils::BrickState& brick_state)
+        : m_prev_left(0),
+          m_prev_right(0),
+          m_odom_pub{loop},
+          m_imu_pub{loop},
           m_serial_ultra_sensor{loop}
         {
-            m_pub_sock.bind(address);
+            m_prev_left = get_brick().Encoder[PORT_D];
+            m_prev_right = get_brick().Encoder[PORT_A];
+            m_odom_pub.bind(odom_address);
+            m_imu_pub.bind(imu_address);
             brick_state.on_state_update(roboutils::NotifyType::CONTINUOUS,
                                         &SensorPublisher::publish_readings,
                                         this);
@@ -281,28 +302,59 @@ class SensorPublisher
 
         void publish_readings()
         {
-            std::vector<double> readings;
-            nlohmann::json msg;
-            nlohmann::json ultra_sonic;
-            nlohmann::json odometry;
-
-            for(int sensor_id = NUM_SENSORS - 1; sensor_id >= 0; --sensor_id)
+            try
             {
-                ultra_sonic[sensor_id] = m_serial_ultra_sensor.sensor_reading(sensor_id);
+                long left_track = get_brick().Encoder[PORT_D];
+                long right_track = get_brick().Encoder[PORT_A];
+
+                if((left_track == m_prev_left && right_track == m_prev_right)
+                   || (left_track == 0 || right_track == 0))
+                {
+                    return;
+                }
+
+                nlohmann::json msg;
+                nlohmann::json ultra_sonic;
+                nlohmann::json odometry;
+                nlohmann::json imu;
+
+                for(int sensor_id = 0; sensor_id <= USONIC_MAX; ++sensor_id)
+                {
+                    ultra_sonic[sensor_id] = m_serial_ultra_sensor.sensor_reading(sensor_id);
+                }
+
+                odometry["left"] = m_prev_left = left_track;
+                odometry["right"] = m_prev_right = right_track;
+                imu["heading"] = m_serial_ultra_sensor.sensor_reading(HEADING);
+                imu["rate_gyr_x"] = m_serial_ultra_sensor.sensor_reading(RATE_GYR_X);
+                imu["rate_gyr_y"] = m_serial_ultra_sensor.sensor_reading(RATE_GYR_Y);
+                imu["rate_gyr_z"] = m_serial_ultra_sensor.sensor_reading(RATE_GYR_Z);
+                imu["gyro_angle_x"] = m_serial_ultra_sensor.sensor_reading(GYRO_ANGLE_X);
+                imu["gyro_angle_y"] = m_serial_ultra_sensor.sensor_reading(GYRO_ANGLE_Y);
+                imu["gyro_angle_z"] = m_serial_ultra_sensor.sensor_reading(GYRO_ANGLE_Z);
+                imu["acc_angle_x"] = m_serial_ultra_sensor.sensor_reading(ACC_ANGLE_X);
+                imu["acc_angle_y"] = m_serial_ultra_sensor.sensor_reading(ACC_ANGLE_Y);
+                imu["cf_angle_x"] = m_serial_ultra_sensor.sensor_reading(CF_ANGLE_X);
+                imu["cf_angle_y"] = m_serial_ultra_sensor.sensor_reading(CF_ANGLE_Y);
+
+                msg["ultrasonic"] = ultra_sonic;
+                msg["odometry"] = odometry;
+
+                m_odom_pub.get_socket().send(boost::asio::buffer(msg.dump()));
+                m_imu_pub.get_socket().send(boost::asio::buffer(imu.dump()));
             }
-
-            odometry["left"] = get_brick().Encoder[PORT_D];
-            odometry["right"] = get_brick().Encoder[PORT_A];
-
-            msg["ultrasonic"] = ultra_sonic;
-            msg["odometry"] = odometry;
-
-            m_pub_sock.get_socket().send(boost::asio::buffer(msg.dump()));
+            catch(std::exception& e)
+            {
+                std::cerr << "Error: " << e.what() << std::endl;
+            }
         }
 
     private:
-        const static int NUM_SENSORS = 5;
-        roboutils::AzmqSock<azmq::pub_socket, 256> m_pub_sock;
+        const static int NUM_SENSORS = 16;
+        long m_prev_left;
+        long m_prev_right;
+        roboutils::AzmqSock<azmq::pub_socket, 256> m_odom_pub;
+        roboutils::AzmqSock<azmq::pub_socket, 256> m_imu_pub;
         sensor::SerialUltrasonicSensor<NUM_SENSORS> m_serial_ultra_sensor;
 };
 

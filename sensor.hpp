@@ -83,33 +83,19 @@ private:
             return;
         }
 
+        int idx = 0;
         for(auto reading : readings)
         {
-            std::vector<std::string> idx_reading_tuple;
-            boost::split(idx_reading_tuple, reading, boost::is_any_of("="));
-
-            if(idx_reading_tuple.size() < 2)
-            {
-                return;
-            }
-
             try
             {
-                int idx = std::stoi(idx_reading_tuple[0]);
-                double value = std::stod(idx_reading_tuple[1]);
-                if(idx >= N || idx < 0)
-                {
-                    std::cerr << "Invalid sensor idx supplied: "
-                              << idx
-                              << ". Valid range: 0 to "
-                              << N << std::endl;
-                    return;
-                }
+                double value = std::stod(reading);
                 m_sensors[idx] = (value * m_alpha) + (1.0 - m_alpha) * m_sensors[idx];
+                ++idx;
+
             }
-            catch(...)
+            catch(std::exception& e)
             {
-                std::cerr << "Unable to parse data: " << reading << std::endl;
+                std::cerr << "Unable to parse data. Error: " << e.what() << std::endl;
             }
         }
     }

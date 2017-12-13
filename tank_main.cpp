@@ -115,8 +115,9 @@ int main(int argc, char* argv[])
             throw std::invalid_argument(errmsg);
         }
 
-        std::string publish_address = "tcp://*:7654";
-        SensorPublisher sensor_publisher{publish_address, loop, state};
+        std::string odom_address = "tcp://*:7654";
+        std::string imu_address = "tcp://127.0.0.1:9999";
+        SensorPublisher sensor_publisher{odom_address, imu_address, loop, state};
         loop.run();
     }
     catch(std::exception& e)
