@@ -353,7 +353,7 @@ __RETRY_COMMUNICATION__:
         printf("Retry failed.\n");
 #endif
         return -1;
-      }      
+      }
     }
 
     Bit_Offset = 0;
